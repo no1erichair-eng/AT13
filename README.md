@@ -57,7 +57,7 @@ them. `tools/crop-designer-cards.py` rebuilds every portrait from them in one
 pass; see that folder's README for the roster mapping.
 
 Image ids are resolved by a glob map in `index-BMUe7iZr.js` with a
-`/assets/gen/{,thumb/,tex/}<id>.webp` fallback for anything not in the map,
+`assets/gen/{,thumb/,tex/}<id>.webp` fallback (resolved against the bundle) for anything not in the map,
 which is why these portraits sit in `public/assets/gen/` under plain
 unhashed names rather than alongside the content-hashed build output. Each
 one ships in the three sizes the site asks for: full 1200×1600, `tex/`
@@ -85,13 +85,18 @@ This is build output, so anything fixed here lives in a minified bundle and
 will be **silently reverted by the next real build**. Each is recorded with
 what to change in `src/`.
 
-### The asset fallback path is absolute
+### The asset fallback path resolves against the bundle
 
-The fallback above was `./assets/gen/…`, which resolves correctly from `/` but
-not from a deeper path — and the Worker answers any unknown path with
-index.html, so `/anything/else` would have looked for the portraits under
-`/anything/assets/gen/`. Every designer portrait reaches the page through that
-fallback, so it is now `/assets/gen/…`.
+The fallback above was `./assets/gen/…`, which resolves against the page URL,
+so it only worked from `/`. A first fix made it root-absolute
+(`/assets/gen/…`), which in turn broke any deployment under a sub-path such as
+`https://www.mlgroup.io/at13/`: every designer portrait was requested from
+`/assets/gen/…` at the host root and returned 404.
+
+It now resolves against the module that contains it —
+``new URL(`gen/…`, import.meta.url)`` — so the portraits are found next to the
+bundle wherever the site is mounted. In `src/`, do the same, or build with the
+right Vite `base`.
 
 ### `sizes` describes the layout the page actually has
 
